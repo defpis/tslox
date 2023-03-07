@@ -1,0 +1,18 @@
+{
+  "name": "lox",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "lox:gen": "ts-node ./tool/GenerateAst.ts ./src",
+    "lox": "ts-node ./src/Lox.ts",
+    "lox:dev": "ts-node-dev --respawn ./src/Lox.ts",
+    "lox:build": "rimraf ./dist && tsc"
+  },
+  "devDependencies": {
+    "@types/node": "^18.14.5",
+    "rimraf": "^4.2.0",
+    "ts-node": "^10.9.1",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^4.9.5"
+  }
+}
