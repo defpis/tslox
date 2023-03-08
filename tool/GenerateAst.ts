@@ -22,31 +22,52 @@ function defineType(
   fields: string
 ) {
   ws.write(`
-export class ${className} extends ${baseName} {
+export class ${className}Expr implements ${baseName} {
 `);
 
   const fieldList = getFieldList(fields);
+
   // 声明
   ws.write(`
   ${fieldList.map((field) => `${field.name}: ${field.type};`).join("\n  ")}
 `);
-
   ws.write(`
   constructor(${fieldList
     .map((field) => `${field.name}: ${field.type}`)
     .join(", ")}) {
 `);
-
   ws.write(`
-    super();
     ${fieldList
       .map((field) => `this.${field.name} = ${field.name};`)
       .join("\n    ")}
 `);
-
   ws.write(`
   }
 `);
+  ws.write(`
+  accept<R>(visitor: ExprVisitor<R>): R {
+`);
+  ws.write(`
+    return visitor.visitor${className}Expr(this);
+`);
+  ws.write(`
+  }
+`);
+  ws.write(`
+}
+`);
+}
+
+function defineVisitor(ws: fs.WriteStream, baseName: string, types: string[]) {
+  ws.write(`
+export interface ${baseName}Visitor<R> {
+`);
+  for (const type of types) {
+    const [className, fields] = type.split(":").map((s) => s.trim());
+    ws.write(`
+  visitor${className}Expr(expr: ${className}Expr): R;
+`);
+  }
   ws.write(`
 }
 `);
@@ -61,19 +82,17 @@ function defineAst(outputDir: string, baseName: string, types: string[]) {
   ws.write(`
 import { Token, LiteralValue } from "./Token";
 `);
-
   ws.write(`
-export class ${baseName} {
+export interface ${baseName} {
 `);
   ws.write(`
-  constructor() {
-`);
-  ws.write(`
-  }
+  accept<R>(visitor: ExprVisitor<R>): R;
 `);
   ws.write(`
 }
 `);
+
+  defineVisitor(ws, baseName, types);
 
   for (const type of types) {
     const [className, fields] = type.split(":").map((s) => s.trim());
@@ -84,7 +103,7 @@ export class ${baseName} {
 }
 
 (function main() {
-  if (process.argv.length != 3) {
+  if (process.argv.length !== 3) {
     console.error("Usage: GenerateAst <output directory>");
     process.exit(64);
   }
