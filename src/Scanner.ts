@@ -97,7 +97,7 @@ export class Scanner {
       case "/":
         if (this.match("/")) {
           // A comment goes until the end of the line.
-          while (this.peek() != "\n" && !this.isAtEnd()) {
+          while (this.peek() !== "\n" && !this.isAtEnd()) {
             this.advance();
           }
         } else {
@@ -121,7 +121,10 @@ export class Scanner {
         } else if (this.isAlpha(c)) {
           this.identifier();
         } else {
-          error(this.line, "Unexpected character.");
+          error(
+            new Token(TokenType.IDENTIFIER, c, null, this.line), // TODO 暂时占位
+            "Unexpected character."
+          );
         }
         break;
     }
@@ -141,7 +144,7 @@ export class Scanner {
   }
 
   isAlpha(c: string) {
-    return (c >= "a" && c <= "z") || (c >= "A" && c <= "Z") || c == "_";
+    return (c >= "a" && c <= "z") || (c >= "A" && c <= "Z") || c === "_";
   }
 
   isDigit(c: string) {
@@ -158,7 +161,7 @@ export class Scanner {
     }
 
     // Look for a fractional part.
-    if (this.peek() == "." && this.isDigit(this.peekNext())) {
+    if (this.peek() === "." && this.isDigit(this.peekNext())) {
       // Consume the "."
       this.advance();
 
@@ -174,15 +177,18 @@ export class Scanner {
   }
 
   string() {
-    while (this.peek() != '"' && !this.isAtEnd()) {
-      if (this.peek() == "\n") {
+    while (this.peek() !== '"' && !this.isAtEnd()) {
+      if (this.peek() === "\n") {
         this.line++;
       }
       this.advance();
     }
 
     if (this.isAtEnd()) {
-      error(this.line, "Unterminated string.");
+      error(
+        new Token(TokenType.IDENTIFIER, "", null, this.line), // TODO 暂时占位
+        "Unterminated string."
+      );
       return;
     }
 
@@ -209,7 +215,7 @@ export class Scanner {
     if (this.isAtEnd()) {
       return false;
     }
-    if (this.source.charAt(this.current) != expect) {
+    if (this.source.charAt(this.current) !== expect) {
       return false;
     }
     this.current++;
