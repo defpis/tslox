@@ -17,6 +17,8 @@ export interface ExprVisitor<R> {
 
   visitorUnaryExpr(expr: UnaryExpr): R;
 
+  visitorVariableExpr(expr: VariableExpr): R;
+
 }
 
 export class BinaryExpr implements Expr {
@@ -92,6 +94,24 @@ export class UnaryExpr implements Expr {
   accept<R>(visitor: ExprVisitor<R>): R {
 
     return visitor.visitorUnaryExpr(this);
+
+  }
+
+}
+
+export class VariableExpr implements Expr {
+
+  name: Token;
+
+  constructor(name: Token) {
+
+    this.name = name;
+
+  }
+
+  accept<R>(visitor: ExprVisitor<R>): R {
+
+    return visitor.visitorVariableExpr(this);
 
   }
 

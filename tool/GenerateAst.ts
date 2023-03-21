@@ -22,12 +22,11 @@ function defineType(
   fields: string
 ) {
   ws.write(`
-export class ${className}Expr implements ${baseName} {
+export class ${className}${baseName} implements ${baseName} {
 `);
 
   const fieldList = getFieldList(fields);
 
-  // 声明
   ws.write(`
   ${fieldList.map((field) => `${field.name}: ${field.type};`).join("\n  ")}
 `);
@@ -45,10 +44,10 @@ export class ${className}Expr implements ${baseName} {
   }
 `);
   ws.write(`
-  accept<R>(visitor: ExprVisitor<R>): R {
+  accept<R>(visitor: ${baseName}Visitor<R>): R {
 `);
   ws.write(`
-    return visitor.visitor${className}Expr(this);
+    return visitor.visitor${className}${baseName}(this);
 `);
   ws.write(`
   }
@@ -65,7 +64,7 @@ export interface ${baseName}Visitor<R> {
   for (const type of types) {
     const [className, fields] = type.split(":").map((s) => s.trim());
     ws.write(`
-  visitor${className}Expr(expr: ${className}Expr): R;
+  visitor${className}${baseName}(${baseName.toLowerCase()}: ${className}${baseName}): R;
 `);
   }
   ws.write(`
@@ -73,20 +72,23 @@ export interface ${baseName}Visitor<R> {
 `);
 }
 
-function defineAst(outputDir: string, baseName: string, types: string[]) {
+function defineAst(
+  outputDir: string,
+  baseName: string,
+  types: string[],
+  callback: (ws: fs.WriteStream) => void
+) {
   const outputPath = path.join(outputDir, `${baseName}.ts`);
 
   const ws = fs.createWriteStream(outputPath, { encoding: "utf-8" });
 
-  // imports
-  ws.write(`
-import { Token, LiteralValue } from "./Token";
-`);
+  callback(ws);
+
   ws.write(`
 export interface ${baseName} {
 `);
   ws.write(`
-  accept<R>(visitor: ExprVisitor<R>): R;
+  accept<R>(visitor: ${baseName}Visitor<R>): R;
 `);
   ws.write(`
 }
@@ -110,10 +112,36 @@ export interface ${baseName} {
 
   const outputDir = process.argv[2];
 
-  defineAst(outputDir, "Expr", [
-    "Binary   : Expr left, Token operator, Expr right",
-    "Grouping : Expr expression",
-    "Literal  : Object value",
-    "Unary    : Token operator, Expr right",
-  ]);
+  defineAst(
+    outputDir,
+    "Expr",
+    [
+      "Binary   : Expr left, Token operator, Expr right",
+      "Grouping : Expr expression",
+      "Literal  : Object value",
+      "Unary    : Token operator, Expr right",
+      "Variable : Token name",
+    ],
+    (ws) => {
+      ws.write(`
+import { Token, LiteralValue } from "./Token";
+`);
+    }
+  );
+
+  defineAst(
+    outputDir,
+    "Stmt",
+    [
+      "Expression : Expr expression",
+      "Print      : Expr expression",
+      "Var        : Token name, Expr initializer",
+    ],
+    (ws) => {
+      ws.write(`
+import { Token } from "./Token";
+import { Expr } from "./Expr";
+`);
+    }
+  );
 })();

@@ -5,10 +5,12 @@ import {
   GroupingExpr,
   LiteralExpr,
   UnaryExpr,
+  VariableExpr,
 } from "./Expr";
+import { ExpressionStmt, PrintStmt, Stmt, StmtVisitor, VarStmt } from "./Stmt";
 import { LiteralValue, Token } from "./Token";
 import { TokenType } from "./Token";
-import { toNumber, isNumber, isString, toString } from "lodash";
+import { toNumber, isNumber, isString, toString, isNil } from "lodash";
 import { runtimeError } from "./Utils";
 
 export class RuntimeError extends Error {
@@ -21,19 +23,48 @@ export class RuntimeError extends Error {
 }
 
 // Object无法表示null、undefined等，用LiteralValue代替
-export class Interpreter implements ExprVisitor<LiteralValue> {
-  interpret(expression: Expr) {
+export class Interpreter
+  implements ExprVisitor<LiteralValue>, StmtVisitor<void>
+{
+  visitorVariableExpr(expr: VariableExpr) {
+    throw new Error("Method not implemented.");
+  }
+
+  visitorVarStmt(stmt: VarStmt): void {
+    throw new Error("Method not implemented.");
+  }
+
+  visitorExpressionStmt(stmt: ExpressionStmt): void {
+    this.evaluate(stmt.expression);
+    return;
+  }
+
+  visitorPrintStmt(stmt: PrintStmt): void {
+    const value = this.evaluate(stmt.expression);
+    console.log(this.stringify(value));
+    return;
+  }
+
+  interpret(statements: Stmt[]) {
     try {
-      const value = this.evaluate(expression);
-      console.log(this.stringify(value));
+      for (const stmt of statements) {
+        this.execute(stmt);
+      }
     } catch (err) {
-      if (err instanceof RuntimeError) return runtimeError(err);
-      throw err; // rethrow
+      if (err instanceof RuntimeError) {
+        runtimeError(err);
+      } else {
+        throw err; // rethrow
+      }
     }
   }
 
+  execute(stmt: Stmt) {
+    stmt.accept(this);
+  }
+
   stringify(value: LiteralValue) {
-    if (value == null) return "nil";
+    if (isNil(value)) return "nil";
     return toString(value);
   }
 

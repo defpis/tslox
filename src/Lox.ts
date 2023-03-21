@@ -1,10 +1,11 @@
 import fs from "fs";
 import readline from "readline";
-import { AstPrinter } from "./AstPrinter";
 import { Interpreter } from "./Interpreter";
 import { Parser } from "./Parser";
 import { Scanner } from "./Scanner";
 import { g } from "./State";
+
+const interpreter = new Interpreter();
 
 function run(source: string) {
   const scanner = new Scanner(source);
@@ -13,15 +14,11 @@ function run(source: string) {
   // console.log(tokens);
 
   const parser = new Parser(tokens);
-  const expression = parser.parse();
+  const statements = parser.parse();
 
   if (g.hadError) return;
 
-  // const printer = new AstPrinter();
-  // printer.print(expression!);
-
-  const interpreter = new Interpreter();
-  interpreter.interpret(expression!);
+  interpreter.interpret(statements);
 }
 
 function runFile(path: string) {
@@ -53,9 +50,10 @@ function runPrompt() {
       if (line) {
         try {
           run(line);
-          g.hadError = false;
         } catch (err) {
           console.log(err);
+        } finally {
+          g.hadError = false;
         }
       }
       rl.prompt();

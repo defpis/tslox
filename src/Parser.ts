@@ -1,6 +1,7 @@
 import { BinaryExpr, Expr, GroupingExpr, LiteralExpr, UnaryExpr } from "./Expr";
 import { Token, TokenType } from "./Token";
 import { error } from "./Utils";
+import { PrintStmt, ExpressionStmt } from "./Stmt";
 
 export class ParseError extends Error {}
 
@@ -13,12 +14,28 @@ export class Parser {
   }
 
   parse() {
-    try {
-      return this.expression();
-    } catch (err) {
-      console.log(err);
-      return null;
+    const statements = [];
+    while (!this.isAtEnd()) {
+      statements.push(this.staement());
     }
+    return statements;
+  }
+
+  staement() {
+    if (this.match(TokenType.PRINT)) return this.printStatement();
+    return this.expressionStatement();
+  }
+
+  printStatement() {
+    const value = this.expression();
+    this.consume(TokenType.SEMICOLON, "Expect ';' after value.");
+    return new PrintStmt(value);
+  }
+
+  expressionStatement() {
+    const expr = this.expression();
+    this.consume(TokenType.SEMICOLON, "Expect ';' after expression.");
+    return new ExpressionStmt(expr);
   }
 
   expression(): Expr {
