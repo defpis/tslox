@@ -1,3 +1,4 @@
-export const globalState = {
+export const g = {
   hadError: false,
+  hadRuntimeError: false,
 };

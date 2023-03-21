@@ -104,7 +104,7 @@ export interface ${baseName} {
 
 (function main() {
   if (process.argv.length !== 3) {
-    console.error("Usage: GenerateAst <output directory>");
+    console.log("Usage: GenerateAst <output directory>");
     process.exit(64);
   }
 

@@ -1,23 +1,39 @@
 import fs from "fs";
 import readline from "readline";
+import { AstPrinter } from "./AstPrinter";
+import { Interpreter } from "./Interpreter";
+import { Parser } from "./Parser";
 import { Scanner } from "./Scanner";
-import { globalState } from "./State";
+import { g } from "./State";
 
 function run(source: string) {
   const scanner = new Scanner(source);
   const tokens = scanner.scanTokens();
 
-  for (const token of tokens) {
-    console.log(token);
-  }
+  // console.log(tokens);
+
+  const parser = new Parser(tokens);
+  const expression = parser.parse();
+
+  if (g.hadError) return;
+
+  // const printer = new AstPrinter();
+  // printer.print(expression!);
+
+  const interpreter = new Interpreter();
+  interpreter.interpret(expression!);
 }
 
 function runFile(path: string) {
   const buffer = fs.readFileSync(path);
   run(buffer.toString());
 
-  if (globalState.hadError) {
+  if (g.hadError) {
     process.exit(65);
+  }
+
+  if (g.hadRuntimeError) {
+    process.exit(70);
   }
 }
 
@@ -37,9 +53,9 @@ function runPrompt() {
       if (line) {
         try {
           run(line);
-          globalState.hadError = false;
+          g.hadError = false;
         } catch (err) {
-          console.error(err);
+          console.log(err);
         }
       }
       rl.prompt();

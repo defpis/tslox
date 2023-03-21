@@ -1,5 +1,6 @@
 import { Token, TokenType, LiteralValue } from "./Token";
 import { error } from "./Utils";
+import { toNumber } from "lodash";
 
 export class Scanner {
   static END = ""; // 教程中使用\0作为截止符
@@ -172,7 +173,7 @@ export class Scanner {
 
     this.addToken(
       TokenType.NUMBER,
-      parseFloat(this.source.substring(this.start, this.current))
+      toNumber(this.source.substring(this.start, this.current))
     );
   }
 
