@@ -2,15 +2,35 @@
 import path from "path";
 import fs from "fs";
 
+function checkOptional(type: string): [boolean, string] {
+  if (type.endsWith("?")) {
+    return [true, type.substring(0, type.length - 1)];
+  }
+  return [false, type];
+}
+
 function getFieldList(fields: string) {
   return fields.split(",").map((field) => {
     const [type, name] = field.trim().split(" ");
+
+    let [optional, newType] = checkOptional(type);
+
+    if (newType === "Object") {
+      newType = "AnyValue";
+    }
+
+    const reg = /List<(.*)>/;
+    const match = reg.exec(newType);
+
+    if (match) {
+      const [optional, type] = checkOptional(match[1]);
+      newType = `Array<${type}${optional ? " | void" : ""}>`;
+    }
+
     return {
-      type:
-        {
-          Object: "LiteralValue",
-        }[type] || type,
+      type: newType,
       name,
+      optional: !!optional,
     };
   });
 }
@@ -28,11 +48,13 @@ export class ${className}${baseName} implements ${baseName} {
   const fieldList = getFieldList(fields);
 
   ws.write(`
-  ${fieldList.map((field) => `${field.name}: ${field.type};`).join("\n  ")}
+  ${fieldList
+    .map((field) => `${field.name}${field.optional ? "?" : ""}: ${field.type};`)
+    .join("\n  ")}
 `);
   ws.write(`
   constructor(${fieldList
-    .map((field) => `${field.name}: ${field.type}`)
+    .map((field) => `${field.name}${field.optional ? "?" : ""}: ${field.type}`)
     .join(", ")}) {
 `);
   ws.write(`
@@ -116,6 +138,7 @@ export interface ${baseName} {
     outputDir,
     "Expr",
     [
+      "Assign   : Token name, Expr value",
       "Binary   : Expr left, Token operator, Expr right",
       "Grouping : Expr expression",
       "Literal  : Object value",
@@ -124,7 +147,7 @@ export interface ${baseName} {
     ],
     (ws) => {
       ws.write(`
-import { Token, LiteralValue } from "./Token";
+import { Token, AnyValue } from "./Token";
 `);
     }
   );
@@ -133,9 +156,10 @@ import { Token, LiteralValue } from "./Token";
     outputDir,
     "Stmt",
     [
+      "Block      : List<Stmt?> statements",
       "Expression : Expr expression",
       "Print      : Expr expression",
-      "Var        : Token name, Expr initializer",
+      "Var        : Token name, Expr? initializer",
     ],
     (ws) => {
       ws.write(`

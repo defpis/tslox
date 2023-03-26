@@ -48,18 +48,19 @@ export enum TokenType {
   EOF = "EOF",
 }
 
-export type LiteralValue = any;
+// Object无法表示null、undefined等，用AnyValue代替
+export type AnyValue = any;
 
 export class Token {
   type: TokenType;
   lexeme: string;
-  literal: LiteralValue;
+  literal: AnyValue;
   line: number;
 
   constructor(
     type: TokenType,
     lexeme: string,
-    literal: LiteralValue,
+    literal: AnyValue,
     line: number
   ) {
     this.type = type;

@@ -1,4 +1,5 @@
 import {
+  AssignExpr,
   BinaryExpr,
   Expr,
   ExprVisitor,
@@ -7,11 +8,19 @@ import {
   UnaryExpr,
   VariableExpr,
 } from "./Expr";
-import { ExpressionStmt, PrintStmt, Stmt, StmtVisitor, VarStmt } from "./Stmt";
-import { LiteralValue, Token } from "./Token";
+import {
+  BlockStmt,
+  ExpressionStmt,
+  PrintStmt,
+  Stmt,
+  StmtVisitor,
+  VarStmt,
+} from "./Stmt";
+import { AnyValue, Token } from "./Token";
 import { TokenType } from "./Token";
 import { toNumber, isNumber, isString, toString, isNil } from "lodash";
 import { runtimeError } from "./Utils";
+import { Environment } from "./Environment";
 
 export class RuntimeError extends Error {
   token: Token;
@@ -22,16 +31,45 @@ export class RuntimeError extends Error {
   }
 }
 
-// Object无法表示null、undefined等，用LiteralValue代替
-export class Interpreter
-  implements ExprVisitor<LiteralValue>, StmtVisitor<void>
-{
-  visitorVariableExpr(expr: VariableExpr) {
-    throw new Error("Method not implemented.");
+export class Interpreter implements ExprVisitor<AnyValue>, StmtVisitor<void> {
+  environemnt = new Environment();
+
+  visitorBlockStmt(stmt: BlockStmt): void {
+    this.executeBlock(stmt.statements, new Environment(this.environemnt));
+    return;
+  }
+
+  executeBlock(statements: Array<Stmt | void>, environemnt: Environment) {
+    const previous = this.environemnt;
+
+    try {
+      this.environemnt = environemnt;
+
+      for (const stmt of statements) {
+        stmt && this.execute(stmt);
+      }
+    } finally {
+      this.environemnt = previous;
+    }
+  }
+
+  visitorAssignExpr(expr: AssignExpr): AnyValue {
+    const value = this.evaluate(expr.value);
+    this.environemnt.assign(expr.name, value);
+    return value;
+  }
+
+  visitorVariableExpr(expr: VariableExpr): AnyValue {
+    return this.environemnt.get(expr.name);
   }
 
   visitorVarStmt(stmt: VarStmt): void {
-    throw new Error("Method not implemented.");
+    let value;
+    if (stmt.initializer) {
+      value = this.evaluate(stmt.initializer);
+    }
+    this.environemnt.define(stmt.name, value);
+    return;
   }
 
   visitorExpressionStmt(stmt: ExpressionStmt): void {
@@ -45,10 +83,10 @@ export class Interpreter
     return;
   }
 
-  interpret(statements: Stmt[]) {
+  interpret(statements: Array<Stmt | void>) {
     try {
       for (const stmt of statements) {
-        this.execute(stmt);
+        stmt && this.execute(stmt);
       }
     } catch (err) {
       if (err instanceof RuntimeError) {
@@ -63,12 +101,12 @@ export class Interpreter
     stmt.accept(this);
   }
 
-  stringify(value: LiteralValue) {
+  stringify(value: AnyValue) {
     if (isNil(value)) return "nil";
     return toString(value);
   }
 
-  visitorBinaryExpr(expr: BinaryExpr): LiteralValue {
+  visitorBinaryExpr(expr: BinaryExpr): AnyValue {
     const left = this.evaluate(expr.left);
     const right = this.evaluate(expr.right);
 
@@ -119,18 +157,18 @@ export class Interpreter
         return this.isEqual(left, right);
     }
 
-    return null;
+    return;
   }
 
-  visitorGroupingExpr(expr: GroupingExpr): LiteralValue {
+  visitorGroupingExpr(expr: GroupingExpr): AnyValue {
     return this.evaluate(expr.expression);
   }
 
-  visitorLiteralExpr(expr: LiteralExpr): LiteralValue {
+  visitorLiteralExpr(expr: LiteralExpr): AnyValue {
     return expr.value;
   }
 
-  visitorUnaryExpr(expr: UnaryExpr): LiteralValue {
+  visitorUnaryExpr(expr: UnaryExpr): AnyValue {
     const right = this.evaluate(expr.right);
 
     switch (expr.operator.type) {
@@ -141,31 +179,27 @@ export class Interpreter
         return -toNumber(right);
     }
 
-    return null;
+    return;
   }
 
-  evaluate(expr: Expr) {
+  evaluate(expr: Expr): AnyValue {
     return expr.accept(this);
   }
 
-  isTruthy(value: LiteralValue) {
+  isTruthy(value: AnyValue) {
     return !!value;
   }
 
-  isEqual(left: LiteralValue, right: LiteralValue) {
+  isEqual(left: AnyValue, right: AnyValue) {
     return left === right;
   }
 
-  checkNumberOperand(operator: Token, value: LiteralValue) {
+  checkNumberOperand(operator: Token, value: AnyValue) {
     if (isNumber(value)) return;
     throw new RuntimeError(operator, "Operand must be a number.");
   }
 
-  checkNumberOperands(
-    operator: Token,
-    left: LiteralValue,
-    right: LiteralValue
-  ) {
+  checkNumberOperands(operator: Token, left: AnyValue, right: AnyValue) {
     if (isNumber(left) && isNumber(right)) return;
     throw new RuntimeError(operator, "Operands must be numbers.");
   }

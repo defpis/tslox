@@ -1,14 +1,25 @@
+import { isNil } from "lodash";
 import {
+  AssignExpr,
   BinaryExpr,
   Expr,
   ExprVisitor,
   GroupingExpr,
   LiteralExpr,
   UnaryExpr,
+  VariableExpr,
 } from "./Expr";
-import { Token, TokenType } from "./Token";
+// import { Token, TokenType } from "./Token";
 
 export class AstPrinter implements ExprVisitor<string> {
+  visitorAssignExpr(expr: AssignExpr): string {
+    throw new Error("Method not implemented.");
+  }
+
+  visitorVariableExpr(expr: VariableExpr): string {
+    throw new Error("Method not implemented.");
+  }
+
   visitorBinaryExpr(expr: BinaryExpr): string {
     return this.parenthesize(expr.operator.lexeme, expr.left, expr.right);
   }
@@ -18,7 +29,7 @@ export class AstPrinter implements ExprVisitor<string> {
   }
 
   visitorLiteralExpr(expr: LiteralExpr): string {
-    if (expr.value === null) return "nil";
+    if (isNil(expr.value)) return "nil";
     return expr.value.toString();
   }
 

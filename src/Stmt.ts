@@ -10,11 +10,31 @@ export interface Stmt {
 
 export interface StmtVisitor<R> {
 
+  visitorBlockStmt(stmt: BlockStmt): R;
+
   visitorExpressionStmt(stmt: ExpressionStmt): R;
 
   visitorPrintStmt(stmt: PrintStmt): R;
 
   visitorVarStmt(stmt: VarStmt): R;
+
+}
+
+export class BlockStmt implements Stmt {
+
+  statements: Array<Stmt | void>;
+
+  constructor(statements: Array<Stmt | void>) {
+
+    this.statements = statements;
+
+  }
+
+  accept<R>(visitor: StmtVisitor<R>): R {
+
+    return visitor.visitorBlockStmt(this);
+
+  }
 
 }
 
@@ -57,9 +77,9 @@ export class PrintStmt implements Stmt {
 export class VarStmt implements Stmt {
 
   name: Token;
-  initializer: Expr;
+  initializer?: Expr;
 
-  constructor(name: Token, initializer: Expr) {
+  constructor(name: Token, initializer?: Expr) {
 
     this.name = name;
     this.initializer = initializer;

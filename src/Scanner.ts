@@ -1,4 +1,4 @@
-import { Token, TokenType, LiteralValue } from "./Token";
+import { Token, TokenType, AnyValue } from "./Token";
 import { error } from "./Utils";
 import { toNumber } from "lodash";
 
@@ -230,9 +230,9 @@ export class Scanner {
 
   // 函数重载
   addToken(type: TokenType): void;
-  addToken(type: TokenType, literal: LiteralValue): void;
+  addToken(type: TokenType, literal: AnyValue): void;
 
-  addToken(type: TokenType, literal: LiteralValue = null) {
+  addToken(type: TokenType, literal?: AnyValue) {
     const text = this.source.substring(this.start, this.current);
     this.tokens.push(new Token(type, text, literal, this.line));
   }

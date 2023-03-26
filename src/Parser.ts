@@ -1,7 +1,15 @@
-import { BinaryExpr, Expr, GroupingExpr, LiteralExpr, UnaryExpr } from "./Expr";
+import {
+  AssignExpr,
+  BinaryExpr,
+  Expr,
+  GroupingExpr,
+  LiteralExpr,
+  UnaryExpr,
+  VariableExpr,
+} from "./Expr";
 import { Token, TokenType } from "./Token";
 import { error } from "./Utils";
-import { PrintStmt, ExpressionStmt } from "./Stmt";
+import { PrintStmt, ExpressionStmt, VarStmt, BlockStmt, Stmt } from "./Stmt";
 
 export class ParseError extends Error {}
 
@@ -16,14 +24,54 @@ export class Parser {
   parse() {
     const statements = [];
     while (!this.isAtEnd()) {
-      statements.push(this.staement());
+      statements.push(this.declearation());
     }
     return statements;
   }
 
-  staement() {
+  declearation() {
+    try {
+      if (this.match(TokenType.VAR)) {
+        return this.varDeclaration();
+      }
+      return this.statement();
+    } catch (err) {
+      if (err instanceof ParseError) {
+        this.synchronize();
+        return;
+      } else {
+        throw err; // rethrow
+      }
+    }
+  }
+
+  varDeclaration() {
+    const name = this.consume(TokenType.IDENTIFIER, "Expect variable name.");
+
+    let initializer;
+    if (this.match(TokenType.EQUAL)) {
+      initializer = this.expression();
+    }
+
+    this.consume(TokenType.SEMICOLON, "Expect ';' after variable declaration.");
+    return new VarStmt(name, initializer);
+  }
+
+  statement() {
     if (this.match(TokenType.PRINT)) return this.printStatement();
+    if (this.match(TokenType.LEFT_BRACE)) return new BlockStmt(this.block());
     return this.expressionStatement();
+  }
+
+  block(): Array<Stmt | void> {
+    const statements: Array<Stmt | void> = [];
+
+    while (!this.check(TokenType.RIGHT_BRACE) && !this.isAtEnd()) {
+      statements.push(this.declearation());
+    }
+
+    this.consume(TokenType.RIGHT_BRACE, "Expect '}' after block.");
+    return statements;
   }
 
   printStatement() {
@@ -39,7 +87,24 @@ export class Parser {
   }
 
   expression(): Expr {
-    return this.equality();
+    return this.assignment();
+  }
+
+  assignment(): Expr {
+    const expr = this.equality();
+
+    if (this.match(TokenType.EQUAL)) {
+      const equals = this.previous();
+      const value = this.assignment();
+
+      if (expr instanceof VariableExpr) {
+        return new AssignExpr(expr.name, value);
+      }
+
+      error(equals, "Invalid assignment target.");
+    }
+
+    return expr;
   }
 
   equality(): Expr {
@@ -114,6 +179,10 @@ export class Parser {
 
     if (this.match(TokenType.NUMBER, TokenType.STRING)) {
       return new LiteralExpr(this.previous().literal);
+    }
+
+    if (this.match(TokenType.IDENTIFIER)) {
+      return new VariableExpr(this.previous());
     }
 
     if (this.match(TokenType.LEFT_PAREN)) {

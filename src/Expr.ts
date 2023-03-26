@@ -1,5 +1,5 @@
 
-import { Token, LiteralValue } from "./Token";
+import { Token, AnyValue } from "./Token";
 
 export interface Expr {
 
@@ -8,6 +8,8 @@ export interface Expr {
 }
 
 export interface ExprVisitor<R> {
+
+  visitorAssignExpr(expr: AssignExpr): R;
 
   visitorBinaryExpr(expr: BinaryExpr): R;
 
@@ -18,6 +20,26 @@ export interface ExprVisitor<R> {
   visitorUnaryExpr(expr: UnaryExpr): R;
 
   visitorVariableExpr(expr: VariableExpr): R;
+
+}
+
+export class AssignExpr implements Expr {
+
+  name: Token;
+  value: Expr;
+
+  constructor(name: Token, value: Expr) {
+
+    this.name = name;
+    this.value = value;
+
+  }
+
+  accept<R>(visitor: ExprVisitor<R>): R {
+
+    return visitor.visitorAssignExpr(this);
+
+  }
 
 }
 
@@ -63,9 +85,9 @@ export class GroupingExpr implements Expr {
 
 export class LiteralExpr implements Expr {
 
-  value: LiteralValue;
+  value: AnyValue;
 
-  constructor(value: LiteralValue) {
+  constructor(value: AnyValue) {
 
     this.value = value;
 
