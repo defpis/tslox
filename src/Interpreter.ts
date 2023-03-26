@@ -5,22 +5,25 @@ import {
   ExprVisitor,
   GroupingExpr,
   LiteralExpr,
+  LogicalExpr,
   UnaryExpr,
   VariableExpr,
 } from "./Expr";
 import {
   BlockStmt,
   ExpressionStmt,
+  IfStmt,
   PrintStmt,
   Stmt,
   StmtVisitor,
   VarStmt,
+  WhileStmt,
 } from "./Stmt";
 import { AnyValue, Token } from "./Token";
 import { TokenType } from "./Token";
 import { toNumber, isNumber, isString, toString, isNil } from "lodash";
-import { runtimeError } from "./Utils";
 import { Environment } from "./Environment";
+import { Lox } from "./Lox";
 
 export class RuntimeError extends Error {
   token: Token;
@@ -34,9 +37,34 @@ export class RuntimeError extends Error {
 export class Interpreter implements ExprVisitor<AnyValue>, StmtVisitor<void> {
   environemnt = new Environment();
 
-  visitorBlockStmt(stmt: BlockStmt): void {
+  visitWhileStmt(stmt: WhileStmt): void {
+    while (this.isTruthy(this.evaluate(stmt.condition))) {
+      this.execute(stmt.body);
+    }
+  }
+
+  visitLogicalExpr(expr: LogicalExpr) {
+    const left = this.evaluate(expr.left);
+
+    if (expr.operator.type === TokenType.OR) {
+      if (this.isTruthy(left)) return left;
+    } else {
+      if (!this.isTruthy(left)) return left;
+    }
+
+    return this.evaluate(expr.right);
+  }
+
+  visitIfStmt(stmt: IfStmt): void {
+    if (this.isTruthy(this.evaluate(stmt.condition))) {
+      this.execute(stmt.thenBranch);
+    } else if (stmt.elseBranch) {
+      this.execute(stmt.elseBranch);
+    }
+  }
+
+  visitBlockStmt(stmt: BlockStmt): void {
     this.executeBlock(stmt.statements, new Environment(this.environemnt));
-    return;
   }
 
   executeBlock(statements: Array<Stmt | void>, environemnt: Environment) {
@@ -53,34 +81,31 @@ export class Interpreter implements ExprVisitor<AnyValue>, StmtVisitor<void> {
     }
   }
 
-  visitorAssignExpr(expr: AssignExpr): AnyValue {
+  visitAssignExpr(expr: AssignExpr): AnyValue {
     const value = this.evaluate(expr.value);
     this.environemnt.assign(expr.name, value);
     return value;
   }
 
-  visitorVariableExpr(expr: VariableExpr): AnyValue {
+  visitVariableExpr(expr: VariableExpr): AnyValue {
     return this.environemnt.get(expr.name);
   }
 
-  visitorVarStmt(stmt: VarStmt): void {
+  visitVarStmt(stmt: VarStmt): void {
     let value;
     if (stmt.initializer) {
       value = this.evaluate(stmt.initializer);
     }
     this.environemnt.define(stmt.name, value);
-    return;
   }
 
-  visitorExpressionStmt(stmt: ExpressionStmt): void {
+  visitExpressionStmt(stmt: ExpressionStmt): void {
     this.evaluate(stmt.expression);
-    return;
   }
 
-  visitorPrintStmt(stmt: PrintStmt): void {
+  visitPrintStmt(stmt: PrintStmt): void {
     const value = this.evaluate(stmt.expression);
     console.log(this.stringify(value));
-    return;
   }
 
   interpret(statements: Array<Stmt | void>) {
@@ -90,7 +115,7 @@ export class Interpreter implements ExprVisitor<AnyValue>, StmtVisitor<void> {
       }
     } catch (err) {
       if (err instanceof RuntimeError) {
-        runtimeError(err);
+        Lox.runtimeError(err);
       } else {
         throw err; // rethrow
       }
@@ -106,7 +131,7 @@ export class Interpreter implements ExprVisitor<AnyValue>, StmtVisitor<void> {
     return toString(value);
   }
 
-  visitorBinaryExpr(expr: BinaryExpr): AnyValue {
+  visitBinaryExpr(expr: BinaryExpr): AnyValue {
     const left = this.evaluate(expr.left);
     const right = this.evaluate(expr.right);
 
@@ -156,19 +181,17 @@ export class Interpreter implements ExprVisitor<AnyValue>, StmtVisitor<void> {
       case TokenType.EQUAL_EQUAL:
         return this.isEqual(left, right);
     }
-
-    return;
   }
 
-  visitorGroupingExpr(expr: GroupingExpr): AnyValue {
+  visitGroupingExpr(expr: GroupingExpr): AnyValue {
     return this.evaluate(expr.expression);
   }
 
-  visitorLiteralExpr(expr: LiteralExpr): AnyValue {
+  visitLiteralExpr(expr: LiteralExpr): AnyValue {
     return expr.value;
   }
 
-  visitorUnaryExpr(expr: UnaryExpr): AnyValue {
+  visitUnaryExpr(expr: UnaryExpr): AnyValue {
     const right = this.evaluate(expr.right);
 
     switch (expr.operator.type) {
@@ -178,8 +201,6 @@ export class Interpreter implements ExprVisitor<AnyValue>, StmtVisitor<void> {
         this.checkNumberOperand(expr.operator, right);
         return -toNumber(right);
     }
-
-    return;
   }
 
   evaluate(expr: Expr): AnyValue {

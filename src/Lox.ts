@@ -1,66 +1,88 @@
 import fs from "fs";
 import readline from "readline";
-import { Interpreter } from "./Interpreter";
+import { Interpreter, RuntimeError } from "./Interpreter";
 import { Parser } from "./Parser";
 import { Scanner } from "./Scanner";
-import { g } from "./State";
+import { Token, TokenType } from "./Token";
 
-const interpreter = new Interpreter();
+export class Lox {
+  static hadError = false;
+  static hadRuntimeError = false;
+  static interpreter = new Interpreter();
 
-function run(source: string) {
-  const scanner = new Scanner(source);
-  const tokens = scanner.scanTokens();
-
-  // console.log(tokens);
-
-  const parser = new Parser(tokens);
-  const statements = parser.parse();
-
-  if (g.hadError) return;
-
-  interpreter.interpret(statements);
-}
-
-function runFile(path: string) {
-  const buffer = fs.readFileSync(path);
-  run(buffer.toString());
-
-  if (g.hadError) {
-    process.exit(65);
-  }
-
-  if (g.hadRuntimeError) {
-    process.exit(70);
-  }
-}
-
-function runPrompt() {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-    prompt: ">>> ",
-  });
-
-  rl.on("line", (line) => {
-    line = line.trim();
-
-    if (line === "exit") {
-      rl.close();
+  static error(token: Token, message: string) {
+    if (token.type === TokenType.EOF) {
+      Lox.report(token.line, "at end", message);
     } else {
-      if (line) {
-        try {
-          run(line);
-        } catch (err) {
-          console.log(err);
-        } finally {
-          g.hadError = false;
-        }
-      }
-      rl.prompt();
+      Lox.report(token.line, `at '${token.lexeme}'`, message);
     }
-  });
+  }
 
-  rl.prompt();
+  static runtimeError(error: RuntimeError) {
+    console.log(`[line ${error.token.line}]: ${error.message}`);
+    Lox.hadRuntimeError = true;
+  }
+
+  static report(line: number, where: string, message: string) {
+    console.log(`[line ${line}] Error ${where}: ${message}`);
+    Lox.hadError = true;
+  }
+
+  static run(source: string) {
+    const scanner = new Scanner(source);
+    const tokens = scanner.scanTokens();
+
+    // console.log(tokens);
+
+    const parser = new Parser(tokens);
+    const statements = parser.parse();
+
+    if (Lox.hadError) return;
+
+    Lox.interpreter.interpret(statements);
+  }
+
+  static runFile(path: string) {
+    const buffer = fs.readFileSync(path);
+    Lox.run(buffer.toString());
+
+    if (Lox.hadError) {
+      process.exit(65);
+    }
+
+    if (Lox.hadRuntimeError) {
+      process.exit(70);
+    }
+  }
+
+  static runPrompt() {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+      prompt: ">>> ",
+    });
+
+    rl.on("line", (line) => {
+      line = line.trim();
+
+      if (line === "exit") {
+        rl.close();
+      } else {
+        if (line) {
+          try {
+            Lox.run(line);
+          } catch (err) {
+            console.log(err);
+          } finally {
+            Lox.hadError = false;
+          }
+        }
+        rl.prompt();
+      }
+    });
+
+    rl.prompt();
+  }
 }
 
 (function main() {
@@ -71,8 +93,8 @@ function runPrompt() {
     console.log("Usage: Lox [script]");
     process.exit(64);
   } else if (process.argv.length === 3) {
-    runFile(process.argv[2]);
+    Lox.runFile(process.argv[2]);
   } else {
-    runPrompt();
+    Lox.runPrompt();
   }
 })();

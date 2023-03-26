@@ -6,34 +6,39 @@ import {
   ExprVisitor,
   GroupingExpr,
   LiteralExpr,
+  LogicalExpr,
   UnaryExpr,
   VariableExpr,
 } from "./Expr";
 // import { Token, TokenType } from "./Token";
 
 export class AstPrinter implements ExprVisitor<string> {
-  visitorAssignExpr(expr: AssignExpr): string {
+  visitLogicalExpr(expr: LogicalExpr): string {
     throw new Error("Method not implemented.");
   }
 
-  visitorVariableExpr(expr: VariableExpr): string {
+  visitAssignExpr(expr: AssignExpr): string {
     throw new Error("Method not implemented.");
   }
 
-  visitorBinaryExpr(expr: BinaryExpr): string {
+  visitVariableExpr(expr: VariableExpr): string {
+    throw new Error("Method not implemented.");
+  }
+
+  visitBinaryExpr(expr: BinaryExpr): string {
     return this.parenthesize(expr.operator.lexeme, expr.left, expr.right);
   }
 
-  visitorGroupingExpr(expr: GroupingExpr): string {
+  visitGroupingExpr(expr: GroupingExpr): string {
     return this.parenthesize("group", expr.expression);
   }
 
-  visitorLiteralExpr(expr: LiteralExpr): string {
+  visitLiteralExpr(expr: LiteralExpr): string {
     if (isNil(expr.value)) return "nil";
     return expr.value.toString();
   }
 
-  visitorUnaryExpr(expr: UnaryExpr): string {
+  visitUnaryExpr(expr: UnaryExpr): string {
     return this.parenthesize(expr.operator.lexeme, expr.right);
   }
 

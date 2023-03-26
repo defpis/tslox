@@ -1,6 +1,6 @@
 import { Token, TokenType, AnyValue } from "./Token";
-import { error } from "./Utils";
 import { toNumber } from "lodash";
+import { Lox } from "./Lox";
 
 export class Scanner {
   static END = ""; // 教程中使用\0作为截止符
@@ -122,8 +122,8 @@ export class Scanner {
         } else if (this.isAlpha(c)) {
           this.identifier();
         } else {
-          error(
-            new Token(TokenType.IDENTIFIER, c, null, this.line), // TODO 暂时占位
+          Lox.error(
+            new Token(TokenType.STRING, c, null, this.line),
             "Unexpected character."
           );
         }
@@ -186,8 +186,8 @@ export class Scanner {
     }
 
     if (this.isAtEnd()) {
-      error(
-        new Token(TokenType.IDENTIFIER, "", null, this.line), // TODO 暂时占位
+      Lox.error(
+        new Token(TokenType.STRING, "", null, this.line),
         "Unterminated string."
       );
       return;

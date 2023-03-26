@@ -11,26 +11,27 @@ function checkOptional(type: string): [boolean, string] {
 
 function getFieldList(fields: string) {
   return fields.split(",").map((field) => {
-    const [type, name] = field.trim().split(" ");
+    let optional = false;
+    let [type, name] = field.trim().split(" ");
 
-    let [optional, newType] = checkOptional(type);
+    [optional, type] = checkOptional(type);
 
-    if (newType === "Object") {
-      newType = "AnyValue";
+    if (type === "Object") {
+      type = "AnyValue";
     }
 
     const reg = /List<(.*)>/;
-    const match = reg.exec(newType);
+    const match = reg.exec(type);
 
     if (match) {
-      const [optional, type] = checkOptional(match[1]);
-      newType = `Array<${type}${optional ? " | void" : ""}>`;
+      const [maybeVoid, subType] = checkOptional(match[1]);
+      type = `Array<${subType}${maybeVoid ? " | void" : ""}>`;
     }
 
     return {
-      type: newType,
+      type,
       name,
-      optional: !!optional,
+      optional,
     };
   });
 }
@@ -69,7 +70,7 @@ export class ${className}${baseName} implements ${baseName} {
   accept<R>(visitor: ${baseName}Visitor<R>): R {
 `);
   ws.write(`
-    return visitor.visitor${className}${baseName}(this);
+    return visitor.visit${className}${baseName}(this);
 `);
   ws.write(`
   }
@@ -86,7 +87,7 @@ export interface ${baseName}Visitor<R> {
   for (const type of types) {
     const [className, fields] = type.split(":").map((s) => s.trim());
     ws.write(`
-  visitor${className}${baseName}(${baseName.toLowerCase()}: ${className}${baseName}): R;
+  visit${className}${baseName}(${baseName.toLowerCase()}: ${className}${baseName}): R;
 `);
   }
   ws.write(`
@@ -142,6 +143,7 @@ export interface ${baseName} {
       "Binary   : Expr left, Token operator, Expr right",
       "Grouping : Expr expression",
       "Literal  : Object value",
+      "Logical  : Expr left, Token operator, Expr right",
       "Unary    : Token operator, Expr right",
       "Variable : Token name",
     ],
@@ -158,8 +160,10 @@ import { Token, AnyValue } from "./Token";
     [
       "Block      : List<Stmt?> statements",
       "Expression : Expr expression",
+      "If         : Expr condition, Stmt thenBranch, Stmt? elseBranch",
       "Print      : Expr expression",
       "Var        : Token name, Expr? initializer",
+      "While      : Expr condition, Stmt body",
     ],
     (ws) => {
       ws.write(`

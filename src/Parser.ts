@@ -4,12 +4,21 @@ import {
   Expr,
   GroupingExpr,
   LiteralExpr,
+  LogicalExpr,
   UnaryExpr,
   VariableExpr,
 } from "./Expr";
 import { Token, TokenType } from "./Token";
-import { error } from "./Utils";
-import { PrintStmt, ExpressionStmt, VarStmt, BlockStmt, Stmt } from "./Stmt";
+import {
+  PrintStmt,
+  ExpressionStmt,
+  VarStmt,
+  BlockStmt,
+  Stmt,
+  IfStmt,
+  WhileStmt,
+} from "./Stmt";
+import { Lox } from "./Lox";
 
 export class ParseError extends Error {}
 
@@ -38,7 +47,6 @@ export class Parser {
     } catch (err) {
       if (err instanceof ParseError) {
         this.synchronize();
-        return;
       } else {
         throw err; // rethrow
       }
@@ -57,10 +65,78 @@ export class Parser {
     return new VarStmt(name, initializer);
   }
 
-  statement() {
+  whileStatement() {
+    this.consume(TokenType.LEFT_PAREN, "Expect '(' after 'while'.");
+    const condition = this.expression();
+    this.consume(TokenType.RIGHT_PAREN, "Expect ')' after condition.");
+    const body = this.statement();
+    return new WhileStmt(condition, body);
+  }
+
+  statement(): Stmt {
+    if (this.match(TokenType.FOR)) return this.forStatement();
+    if (this.match(TokenType.IF)) return this.ifStatement();
     if (this.match(TokenType.PRINT)) return this.printStatement();
+    if (this.match(TokenType.WHILE)) return this.whileStatement();
     if (this.match(TokenType.LEFT_BRACE)) return new BlockStmt(this.block());
     return this.expressionStatement();
+  }
+
+  forStatement(): Stmt {
+    this.consume(TokenType.LEFT_PAREN, "Expect '(' after 'for'.");
+
+    let initializer;
+    if (this.match(TokenType.SEMICOLON)) {
+    } else if (this.match(TokenType.VAR)) {
+      initializer = this.varDeclaration();
+    } else {
+      initializer = this.expressionStatement();
+    }
+
+    let condition;
+    if (!this.check(TokenType.SEMICOLON)) {
+      condition = this.expression();
+    }
+    this.consume(TokenType.SEMICOLON, "Expect ';' after loop condition.");
+
+    let increment;
+    if (!this.check(TokenType.RIGHT_PAREN)) {
+      increment = this.expression();
+    }
+    this.consume(TokenType.RIGHT_PAREN, "Expect ')' after for clauses.");
+
+    let body = this.statement();
+
+    if (increment) {
+      body = new BlockStmt([body, new ExpressionStmt(increment)]);
+    }
+
+    if (!condition) {
+      condition = new LiteralExpr(true);
+    }
+
+    body = new WhileStmt(condition, body);
+
+    if (initializer) {
+      body = new BlockStmt([initializer, body]);
+    }
+
+    return body;
+  }
+
+  ifStatement() {
+    this.consume(TokenType.LEFT_PAREN, "Expect '(' after 'if'.");
+    const condition = this.expression();
+    this.consume(TokenType.RIGHT_PAREN, "Expect ')' after if condition.");
+
+    const thenBranch = this.statement();
+    let elseBranch;
+
+    if (this.match(TokenType.ELSE)) {
+      elseBranch = this.statement();
+    }
+
+    return new IfStmt(condition, thenBranch, elseBranch);
   }
 
   block(): Array<Stmt | void> {
@@ -91,7 +167,7 @@ export class Parser {
   }
 
   assignment(): Expr {
-    const expr = this.equality();
+    const expr = this.or();
 
     if (this.match(TokenType.EQUAL)) {
       const equals = this.previous();
@@ -101,7 +177,31 @@ export class Parser {
         return new AssignExpr(expr.name, value);
       }
 
-      error(equals, "Invalid assignment target.");
+      Lox.error(equals, "Invalid assignment target.");
+    }
+
+    return expr;
+  }
+
+  or(): Expr {
+    let expr = this.and();
+
+    while (this.match(TokenType.OR)) {
+      const operator = this.previous();
+      const right = this.and();
+      expr = new LogicalExpr(expr, operator, right);
+    }
+
+    return expr;
+  }
+
+  and() {
+    let expr = this.equality();
+
+    while (this.match(TokenType.AND)) {
+      const operator = this.previous();
+      const right = this.equality();
+      expr = new LogicalExpr(expr, operator, right);
     }
 
     return expr;
@@ -202,7 +302,7 @@ export class Parser {
   }
 
   error(token: Token, message: string) {
-    error(token, message);
+    Lox.error(token, message);
     return new ParseError("Parser error.");
   }
 
@@ -210,7 +310,7 @@ export class Parser {
     this.advance();
 
     while (!this.isAtEnd()) {
-      if (this.previous().type == TokenType.SEMICOLON) return;
+      if (this.previous().type === TokenType.SEMICOLON) return;
 
       switch (this.peek().type) {
         case TokenType.CLASS:
