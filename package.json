@@ -6,6 +6,7 @@
     "lox:gen": "ts-node ./tool/GenerateAst.ts ./src",
     "lox": "ts-node ./src/Lox.ts",
     "lox:dev": "ts-node-dev --respawn ./src/Lox.ts",
+    "lox:test": "ts-node ./src/Lox.ts ./script/test.lox",
     "lox:build": "rimraf ./dist && tsc"
   },
   "devDependencies": {
@@ -17,6 +18,7 @@
     "typescript": "^4.9.5"
   },
   "dependencies": {
+    "dayjs": "^1.11.7",
     "lodash": "^4.17.21"
   }
 }

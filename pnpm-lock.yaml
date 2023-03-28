@@ -3,6 +3,7 @@ lockfileVersion: 5.3
 specifiers:
   '@types/lodash': ^4.14.191
   '@types/node': ^18.14.5
+  dayjs: ^1.11.7
   lodash: ^4.17.21
   rimraf: ^4.2.0
   ts-node: ^10.9.1
@@ -10,6 +11,7 @@ specifiers:
   typescript: ^4.9.5
 
 dependencies:
+  dayjs: 1.11.7
   lodash: 4.17.21
 
 devDependencies:
@@ -155,6 +157,10 @@ packages:
   /create-require/1.1.1:
     resolution: {integrity: sha512-dcKFX3jn0MpIaXjisoRvexIJVEKzaq7z2rZKxf+MSr9TkdmHmsU4m2lcLojrj/FHl8mk5VxMmYA+ftRkP/3oKQ==}
     dev: true
+
+  /dayjs/1.11.7:
+    resolution: {integrity: sha512-+Yw9U6YO5TQohxLcIkrXBeY73WP3ejHWVvx8XCk3gxvQDCTEmS48ZrSZCKciI7Bhl/uCMyxYtE9UqRILmFphkQ==}
+    dev: false
 
   /diff/4.0.2:
     resolution: {integrity: sha512-58lmxKSA4BNyLz+HHMUzlOEpg09FV+ev6ZMe3vJihgdxzgcwZ8VoEEPmALCZG9LmqfVoNMMKpttIYTVG6uDY7A==}

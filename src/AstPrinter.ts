@@ -2,6 +2,7 @@ import { isNil } from "lodash";
 import {
   AssignExpr,
   BinaryExpr,
+  CallExpr,
   Expr,
   ExprVisitor,
   GroupingExpr,
@@ -13,6 +14,10 @@ import {
 // import { Token, TokenType } from "./Token";
 
 export class AstPrinter implements ExprVisitor<string> {
+  visitCallExpr(expr: CallExpr): string {
+    throw new Error("Method not implemented.");
+  }
+
   visitLogicalExpr(expr: LogicalExpr): string {
     throw new Error("Method not implemented.");
   }

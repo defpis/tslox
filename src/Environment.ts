@@ -9,8 +9,8 @@ export class Environment {
     this.enclosing = enclosing;
   }
 
-  define(name: Token, value: AnyValue) {
-    this.values.set(name.lexeme, value);
+  define(name: string, value: AnyValue) {
+    this.values.set(name, value);
   }
 
   get(name: Token): AnyValue {

@@ -1,6 +1,7 @@
 import {
   AssignExpr,
   BinaryExpr,
+  CallExpr,
   Expr,
   ExprVisitor,
   GroupingExpr,
@@ -12,8 +13,10 @@ import {
 import {
   BlockStmt,
   ExpressionStmt,
+  FunctionStmt,
   IfStmt,
   PrintStmt,
+  ReturnStmt,
   Stmt,
   StmtVisitor,
   VarStmt,
@@ -24,6 +27,8 @@ import { TokenType } from "./Token";
 import { toNumber, isNumber, isString, toString, isNil } from "lodash";
 import { Environment } from "./Environment";
 import { Lox } from "./Lox";
+import { LoxCallable, LoxFunction, __clock__ } from "./LoxCallable";
+import { Return } from "./Return";
 
 export class RuntimeError extends Error {
   token: Token;
@@ -35,7 +40,52 @@ export class RuntimeError extends Error {
 }
 
 export class Interpreter implements ExprVisitor<AnyValue>, StmtVisitor<void> {
-  environemnt = new Environment();
+  globals = new Environment();
+  environment = this.globals;
+
+  constructor() {
+    this.globals.define("clock", __clock__);
+  }
+
+  visitReturnStmt(stmt: ReturnStmt): void {
+    let value;
+    if (stmt.value) {
+      value = this.evaluate(stmt.value);
+    }
+    throw new Return(value);
+  }
+
+  visitFunctionStmt(stmt: FunctionStmt): void {
+    const func = new LoxFunction(stmt, this.environment);
+    this.environment.define(stmt.name.lexeme, func);
+  }
+
+  visitCallExpr(expr: CallExpr) {
+    const callee = this.evaluate(expr.callee);
+
+    const args: AnyValue[] = [];
+    for (const arg of expr.args) {
+      args.push(this.evaluate(arg));
+    }
+
+    if (!(callee instanceof LoxCallable)) {
+      throw new RuntimeError(
+        expr.paren,
+        "Can only call functions and classes."
+      );
+    }
+
+    const func = callee;
+
+    if (args.length !== func.arity()) {
+      throw new RuntimeError(
+        expr.paren,
+        `Expect ${func.arity()} arguments, but got ${args.length}.`
+      );
+    }
+
+    return func.call(this, args);
+  }
 
   visitWhileStmt(stmt: WhileStmt): void {
     while (this.isTruthy(this.evaluate(stmt.condition))) {
@@ -64,31 +114,31 @@ export class Interpreter implements ExprVisitor<AnyValue>, StmtVisitor<void> {
   }
 
   visitBlockStmt(stmt: BlockStmt): void {
-    this.executeBlock(stmt.statements, new Environment(this.environemnt));
+    this.executeBlock(stmt.statements, new Environment(this.environment));
   }
 
-  executeBlock(statements: Array<Stmt | void>, environemnt: Environment) {
-    const previous = this.environemnt;
+  executeBlock(statements: Array<Stmt | void>, environment: Environment) {
+    const previous = this.environment;
 
     try {
-      this.environemnt = environemnt;
+      this.environment = environment;
 
       for (const stmt of statements) {
         stmt && this.execute(stmt);
       }
     } finally {
-      this.environemnt = previous;
+      this.environment = previous;
     }
   }
 
   visitAssignExpr(expr: AssignExpr): AnyValue {
     const value = this.evaluate(expr.value);
-    this.environemnt.assign(expr.name, value);
+    this.environment.assign(expr.name, value);
     return value;
   }
 
   visitVariableExpr(expr: VariableExpr): AnyValue {
-    return this.environemnt.get(expr.name);
+    return this.environment.get(expr.name);
   }
 
   visitVarStmt(stmt: VarStmt): void {
@@ -96,7 +146,7 @@ export class Interpreter implements ExprVisitor<AnyValue>, StmtVisitor<void> {
     if (stmt.initializer) {
       value = this.evaluate(stmt.initializer);
     }
-    this.environemnt.define(stmt.name, value);
+    this.environment.define(stmt.name.lexeme, value);
   }
 
   visitExpressionStmt(stmt: ExpressionStmt): void {
