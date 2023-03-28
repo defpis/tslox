@@ -2,6 +2,7 @@ import fs from "fs";
 import readline from "readline";
 import { Interpreter, RuntimeError } from "./Interpreter";
 import { Parser } from "./Parser";
+import { Resolver } from "./Resolver";
 import { Scanner } from "./Scanner";
 import { Token, TokenType } from "./Token";
 
@@ -36,6 +37,11 @@ export class Lox {
 
     const parser = new Parser(tokens);
     const statements = parser.parse();
+
+    if (Lox.hadError) return;
+
+    const resolver = new Resolver(Lox.interpreter);
+    resolver.resolve(statements);
 
     if (Lox.hadError) return;
 

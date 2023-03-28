@@ -42,9 +42,14 @@ export class RuntimeError extends Error {
 export class Interpreter implements ExprVisitor<AnyValue>, StmtVisitor<void> {
   globals = new Environment();
   environment = this.globals;
+  locals = new Map<Expr, number>();
 
   constructor() {
     this.globals.define("clock", __clock__);
+  }
+
+  resolve(expr: Expr, depth: number) {
+    this.locals.set(expr, depth);
   }
 
   visitReturnStmt(stmt: ReturnStmt): void {
@@ -133,12 +138,31 @@ export class Interpreter implements ExprVisitor<AnyValue>, StmtVisitor<void> {
 
   visitAssignExpr(expr: AssignExpr): AnyValue {
     const value = this.evaluate(expr.value);
-    this.environment.assign(expr.name, value);
+    const distance = this.locals.get(expr);
+
+    // distance == 0,1,2...
+    if (!isNil(distance)) {
+      this.environment.assignAt(distance, expr.name, value);
+    } else {
+      this.globals.assign(expr.name, value);
+    }
+
     return value;
   }
 
   visitVariableExpr(expr: VariableExpr): AnyValue {
-    return this.environment.get(expr.name);
+    return this.lookUpVariable(expr.name, expr);
+  }
+
+  lookUpVariable(name: Token, expr: Expr): AnyValue {
+    const distance = this.locals.get(expr);
+
+    // distance == 0,1,2...
+    if (!isNil(distance)) {
+      return this.environment.getAt(distance, name.lexeme);
+    } else {
+      return this.globals.get(name);
+    }
   }
 
   visitVarStmt(stmt: VarStmt): void {

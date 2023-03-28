@@ -9,6 +9,22 @@ export class Environment {
     this.enclosing = enclosing;
   }
 
+  getAt(distance: number, name: string): AnyValue {
+    this.ancestor(distance).values.get(name);
+  }
+
+  assignAt(distance: number, name: Token, value: AnyValue) {
+    this.ancestor(distance).values.set(name.lexeme, value);
+  }
+
+  ancestor(distance: number) {
+    let environment: Environment = this;
+    for (let i = 0; i < distance; i++) {
+      environment = environment.enclosing!; // 先遍历过一遍得到的距离，不可能取不到值
+    }
+    return environment;
+  }
+
   define(name: string, value: AnyValue) {
     this.values.set(name, value);
   }
