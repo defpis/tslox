@@ -11,14 +11,9 @@ function checkOptional(type: string): [boolean, string] {
 
 function getFieldList(fields: string) {
   return fields.split(",").map((field) => {
-    let optional = false;
     let [type, name] = field.trim().split(" ");
-
+    let optional = false;
     [optional, type] = checkOptional(type);
-
-    if (type === "Object") {
-      type = "AnyValue";
-    }
 
     const reg = /List<(.*)>/;
     const match = reg.exec(type);
@@ -142,9 +137,12 @@ export interface ${baseName} {
       "Assign   : Token name, Expr value",
       "Binary   : Expr left, Token operator, Expr right",
       "Call     : Expr callee, Token paren, List<Expr> args",
+      "Get      : Expr object, Token name",
       "Grouping : Expr expression",
-      "Literal  : Object value",
+      "Literal  : AnyValue value",
       "Logical  : Expr left, Token operator, Expr right",
+      "Set      : Expr object, Token name, Expr value",
+      "This     : Token keyword",
       "Unary    : Token operator, Expr right",
       "Variable : Token name",
     ],
@@ -160,6 +158,7 @@ import { Token, AnyValue } from "./Token";
     "Stmt",
     [
       "Block      : List<Stmt?> statements",
+      "Class      : Token name, List<FunctionStmt> methods",
       "Expression : Expr expression",
       "If         : Expr condition, Stmt thenBranch, Stmt? elseBranch",
       "Function   : Token name, List<Token> params, List<Stmt?> body",

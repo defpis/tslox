@@ -2,7 +2,7 @@ import { RuntimeError } from "./Interpreter";
 import { AnyValue, Token } from "./Token";
 
 export class Environment {
-  values = new Map();
+  values = new Map<string, AnyValue>();
   enclosing?: Environment;
 
   constructor(enclosing?: Environment) {
@@ -10,14 +10,14 @@ export class Environment {
   }
 
   getAt(distance: number, name: string): AnyValue {
-    this.ancestor(distance).values.get(name);
+    return this.ancestor(distance).values.get(name);
   }
 
-  assignAt(distance: number, name: Token, value: AnyValue) {
+  assignAt(distance: number, name: Token, value: AnyValue): void {
     this.ancestor(distance).values.set(name.lexeme, value);
   }
 
-  ancestor(distance: number) {
+  ancestor(distance: number): Environment {
     let environment: Environment = this;
     for (let i = 0; i < distance; i++) {
       environment = environment.enclosing!; // 先遍历过一遍得到的距离，不可能取不到值
@@ -25,7 +25,7 @@ export class Environment {
     return environment;
   }
 
-  define(name: string, value: AnyValue) {
+  define(name: string, value: AnyValue): void {
     this.values.set(name, value);
   }
 
@@ -41,7 +41,7 @@ export class Environment {
     throw new RuntimeError(name, `Undefined variable ${name.lexeme}.`);
   }
 
-  assign(name: Token, value: AnyValue) {
+  assign(name: Token, value: AnyValue): void {
     if (this.values.has(name.lexeme)) {
       this.values.set(name.lexeme, value);
       return;

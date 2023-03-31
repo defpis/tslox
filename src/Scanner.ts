@@ -41,7 +41,7 @@ export class Scanner {
       this.scanToken();
     }
 
-    this.tokens.push(new Token(TokenType.EOF, "", null, this.line));
+    this.tokens.push(new Token(TokenType.EOF, "", undefined, this.line));
     return this.tokens;
   }
 
@@ -123,7 +123,7 @@ export class Scanner {
           this.identifier();
         } else {
           Lox.error(
-            new Token(TokenType.STRING, c, null, this.line),
+            new Token(TokenType.STRING, c, undefined, this.line),
             "Unexpected character."
           );
         }
@@ -187,7 +187,7 @@ export class Scanner {
 
     if (this.isAtEnd()) {
       Lox.error(
-        new Token(TokenType.STRING, "", null, this.line),
+        new Token(TokenType.STRING, "", undefined, this.line),
         "Unterminated string."
       );
       return;

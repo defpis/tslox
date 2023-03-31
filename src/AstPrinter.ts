@@ -5,15 +5,30 @@ import {
   CallExpr,
   Expr,
   ExprVisitor,
+  GetExpr,
   GroupingExpr,
   LiteralExpr,
   LogicalExpr,
+  SetExpr,
+  ThisExpr,
   UnaryExpr,
   VariableExpr,
 } from "./Expr";
 // import { Token, TokenType } from "./Token";
 
 export class AstPrinter implements ExprVisitor<string> {
+  visitGetExpr(expr: GetExpr): string {
+    throw new Error("Method not implemented.");
+  }
+
+  visitSetExpr(expr: SetExpr): string {
+    throw new Error("Method not implemented.");
+  }
+
+  visitThisExpr(expr: ThisExpr): string {
+    throw new Error("Method not implemented.");
+  }
+
   visitCallExpr(expr: CallExpr): string {
     throw new Error("Method not implemented.");
   }
@@ -60,8 +75,8 @@ export class AstPrinter implements ExprVisitor<string> {
 // >> (* (- 123) (group 45.67))
 
 // const expression = new BinaryExpr(
-//   new UnaryExpr(new Token(TokenType.MINUS, "-", null, 1), new LiteralExpr(123)),
-//   new Token(TokenType.STAR, "*", null, 1),
+//   new UnaryExpr(new Token(TokenType.MINUS, "-", undefined, 1), new LiteralExpr(123)),
+//   new Token(TokenType.STAR, "*", undefined, 1),
 //   new GroupingExpr(new LiteralExpr(45.67))
 // );
 // new AstPrinter().print(expression);

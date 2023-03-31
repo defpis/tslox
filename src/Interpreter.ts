@@ -4,14 +4,18 @@ import {
   CallExpr,
   Expr,
   ExprVisitor,
+  GetExpr,
   GroupingExpr,
   LiteralExpr,
   LogicalExpr,
+  SetExpr,
+  ThisExpr,
   UnaryExpr,
   VariableExpr,
 } from "./Expr";
 import {
   BlockStmt,
+  ClassStmt,
   ExpressionStmt,
   FunctionStmt,
   IfStmt,
@@ -27,8 +31,11 @@ import { TokenType } from "./Token";
 import { toNumber, isNumber, isString, toString, isNil } from "lodash";
 import { Environment } from "./Environment";
 import { Lox } from "./Lox";
-import { LoxCallable, LoxFunction, __clock__ } from "./LoxCallable";
+import { LoxCallable, __clock__ } from "./LoxCallable";
 import { Return } from "./Return";
+import { LoxClass } from "./LoxClass";
+import { LoxFunction } from "./LoxFunction";
+import { LoxInstance } from "./LoxInstance";
 
 export class RuntimeError extends Error {
   token: Token;
@@ -48,6 +55,49 @@ export class Interpreter implements ExprVisitor<AnyValue>, StmtVisitor<void> {
     this.globals.define("clock", __clock__);
   }
 
+  visitThisExpr(expr: ThisExpr) {
+    return this.lookUpVariable(expr.keyword, expr);
+  }
+
+  visitSetExpr(expr: SetExpr) {
+    const object = this.evaluate(expr.object);
+
+    if (!(object instanceof LoxInstance)) {
+      throw new RuntimeError(expr.name, "Only instances have fields.");
+    }
+
+    const value = this.evaluate(expr.value);
+    object.set(expr.name, value);
+    return value;
+  }
+
+  visitGetExpr(expr: GetExpr) {
+    const object = this.evaluate(expr.object);
+
+    if (object instanceof LoxInstance) {
+      return object.get(expr.name);
+    }
+
+    throw new RuntimeError(expr.name, "Only instances have properties.");
+  }
+
+  visitClassStmt(stmt: ClassStmt): void {
+    this.environment.define(stmt.name.lexeme, undefined);
+
+    const methods = new Map<string, LoxFunction>();
+    for (const method of stmt.methods) {
+      const func = new LoxFunction(
+        method,
+        this.environment,
+        method.name.lexeme === "init" // 是否为构造函数，通过方法名判断
+      );
+      methods.set(method.name.lexeme, func);
+    }
+    const klass = new LoxClass(stmt.name.lexeme, methods);
+
+    this.environment.assign(stmt.name, klass);
+  }
+
   resolve(expr: Expr, depth: number) {
     this.locals.set(expr, depth);
   }
@@ -61,7 +111,7 @@ export class Interpreter implements ExprVisitor<AnyValue>, StmtVisitor<void> {
   }
 
   visitFunctionStmt(stmt: FunctionStmt): void {
-    const func = new LoxFunction(stmt, this.environment);
+    const func = new LoxFunction(stmt, this.environment, false);
     this.environment.define(stmt.name.lexeme, func);
   }
 
@@ -140,7 +190,7 @@ export class Interpreter implements ExprVisitor<AnyValue>, StmtVisitor<void> {
     const value = this.evaluate(expr.value);
     const distance = this.locals.get(expr);
 
-    // distance == 0,1,2...
+    // distance === 0,1,2...
     if (!isNil(distance)) {
       this.environment.assignAt(distance, expr.name, value);
     } else {
@@ -157,7 +207,7 @@ export class Interpreter implements ExprVisitor<AnyValue>, StmtVisitor<void> {
   lookUpVariable(name: Token, expr: Expr): AnyValue {
     const distance = this.locals.get(expr);
 
-    // distance == 0,1,2...
+    // distance === 0,1,2...
     if (!isNil(distance)) {
       return this.environment.getAt(distance, name.lexeme);
     } else {

@@ -5,9 +5,12 @@ import {
   CallExpr,
   Expr,
   ExprVisitor,
+  GetExpr,
   GroupingExpr,
   LiteralExpr,
   LogicalExpr,
+  SetExpr,
+  ThisExpr,
   UnaryExpr,
   VariableExpr,
 } from "./Expr";
@@ -15,6 +18,7 @@ import { Interpreter } from "./Interpreter";
 import { Lox } from "./Lox";
 import {
   BlockStmt,
+  ClassStmt,
   ExpressionStmt,
   FunctionStmt,
   IfStmt,
@@ -30,24 +34,71 @@ import { Token } from "./Token";
 export enum FunctionType {
   NONE,
   FUNCTION,
+  INITIALIZER,
+  METHOD,
+}
+
+export enum ClassType {
+  NONE,
+  CLASS,
 }
 
 export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
   interpreter: Interpreter;
   scopes: Array<Map<string, boolean>> = []; // 数组当成栈用
   currentFunction = FunctionType.NONE;
-
-  get isEmpty() {
-    return this.scopes.length === 0;
-  }
+  currentClass = ClassType.NONE;
 
   // 类似 Java Stack 的 peek() 方法
   get scope() {
     return this.scopes[this.scopes.length - 1];
   }
 
+  isEmpty() {
+    return this.scopes.length === 0;
+  }
+
   constructor(interpreter: Interpreter) {
     this.interpreter = interpreter;
+  }
+
+  visitThisExpr(expr: ThisExpr): void {
+    if (this.currentClass === ClassType.NONE) {
+      Lox.error(expr.keyword, "Can't use 'this' outside of a class.");
+    } else {
+      this.resolveLocal(expr, expr.keyword);
+    }
+  }
+
+  visitSetExpr(expr: SetExpr): void {
+    this.resolve(expr.value);
+    this.resolve(expr.object);
+  }
+
+  visitGetExpr(expr: GetExpr): void {
+    this.resolve(expr.object);
+  }
+
+  visitClassStmt(stmt: ClassStmt): void {
+    const enclosingClass = this.currentClass;
+    this.currentClass = ClassType.CLASS;
+
+    this.declare(stmt.name);
+    this.define(stmt.name);
+
+    this.beginScope();
+    this.scope.set("this", true);
+    for (const method of stmt.methods) {
+      this.resolveFunction(
+        method,
+        method.name.lexeme === "init"
+          ? FunctionType.INITIALIZER
+          : FunctionType.METHOD
+      );
+    }
+    this.endScope();
+
+    this.currentClass = enclosingClass;
   }
 
   visitBlockStmt(stmt: BlockStmt): void {
@@ -57,7 +108,7 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
   }
 
   beginScope() {
-    this.scopes.push(new Map());
+    this.scopes.push(new Map<string, boolean>());
   }
 
   endScope() {
@@ -117,7 +168,12 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
     if (this.currentFunction === FunctionType.NONE) {
       Lox.error(stmt.keyword, "Can't return form top-level code.");
     }
-    if (stmt.value) this.resolve(stmt.value);
+    if (stmt.value) {
+      if (this.currentFunction === FunctionType.INITIALIZER) {
+        Lox.error(stmt.keyword, "Can't return a value from an initializer.");
+      }
+      this.resolve(stmt.value);
+    }
   }
 
   visitVarStmt(stmt: VarStmt): void {
@@ -129,7 +185,7 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
   }
 
   declare(name: Token) {
-    if (this.isEmpty) return;
+    if (this.isEmpty()) return;
 
     if (this.scope.has(name.lexeme)) {
       Lox.error(name, "Already declare variable with this name in this scope.");
@@ -139,7 +195,7 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
   }
 
   define(name: Token) {
-    if (this.isEmpty) return;
+    if (this.isEmpty()) return;
     this.scope.set(name.lexeme, true);
   }
 
@@ -184,8 +240,7 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
   }
 
   visitVariableExpr(expr: VariableExpr): void {
-    // TODO 检查变量是否在其自身的初始化式中被访问？
-    if (!this.isEmpty && !this.scope.get(expr.name.lexeme)) {
+    if (!this.isEmpty() && !this.scope.get(expr.name.lexeme)) {
       Lox.error(expr.name, "Can't read local variable in its own initializer.");
     }
 

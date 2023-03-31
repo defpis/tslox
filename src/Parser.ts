@@ -3,9 +3,12 @@ import {
   BinaryExpr,
   CallExpr,
   Expr,
+  GetExpr,
   GroupingExpr,
   LiteralExpr,
   LogicalExpr,
+  SetExpr,
+  ThisExpr,
   UnaryExpr,
   VariableExpr,
 } from "./Expr";
@@ -20,6 +23,7 @@ import {
   WhileStmt,
   FunctionStmt,
   ReturnStmt,
+  ClassStmt,
 } from "./Stmt";
 import { Lox } from "./Lox";
 
@@ -43,6 +47,7 @@ export class Parser {
 
   declaration() {
     try {
+      if (this.match(TokenType.CLASS)) return this.classDeclaration();
       if (this.match(TokenType.FUN)) return this.function("function");
       if (this.match(TokenType.VAR)) return this.varDeclaration();
       return this.statement();
@@ -53,6 +58,20 @@ export class Parser {
         throw err; // rethrow
       }
     }
+  }
+
+  classDeclaration() {
+    const name = this.consume(TokenType.IDENTIFIER, "Expect class name.");
+    this.consume(TokenType.LEFT_BRACE, "Expect '{' before class body.");
+
+    const methods: FunctionStmt[] = [];
+    while (!this.check(TokenType.RIGHT_BRACE) && !this.isAtEnd()) {
+      methods.push(this.function("method"));
+    }
+
+    this.consume(TokenType.RIGHT_BRACE, "Expect '}' after class body.");
+
+    return new ClassStmt(name, methods);
   }
 
   function(kind: string) {
@@ -214,6 +233,8 @@ export class Parser {
 
       if (expr instanceof VariableExpr) {
         return new AssignExpr(expr.name, value);
+      } else if (expr instanceof GetExpr) {
+        return new SetExpr(expr.object, expr.name, value);
       }
 
       Lox.error(equals, "Invalid assignment target.");
@@ -317,6 +338,12 @@ export class Parser {
     while (true) {
       if (this.match(TokenType.LEFT_PAREN)) {
         expr = this.finishCall(expr);
+      } else if (this.match(TokenType.DOT)) {
+        const name = this.consume(
+          TokenType.IDENTIFIER,
+          "Expect property name after '.'."
+        );
+        expr = new GetExpr(expr, name);
       } else {
         break;
       }
@@ -349,10 +376,14 @@ export class Parser {
   primary(): Expr {
     if (this.match(TokenType.FALSE)) return new LiteralExpr(false);
     if (this.match(TokenType.TRUE)) return new LiteralExpr(true);
-    if (this.match(TokenType.NIL)) return new LiteralExpr(null);
+    if (this.match(TokenType.NIL)) return new LiteralExpr(undefined);
 
     if (this.match(TokenType.NUMBER, TokenType.STRING)) {
       return new LiteralExpr(this.previous().literal);
+    }
+
+    if (this.match(TokenType.THIS)) {
+      return new ThisExpr(this.previous());
     }
 
     if (this.match(TokenType.IDENTIFIER)) {
