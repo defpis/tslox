@@ -142,6 +142,7 @@ export interface ${baseName} {
       "Literal  : AnyValue value",
       "Logical  : Expr left, Token operator, Expr right",
       "Set      : Expr object, Token name, Expr value",
+      "Super    : Token keyword, Token method",
       "This     : Token keyword",
       "Unary    : Token operator, Expr right",
       "Variable : Token name",
@@ -158,7 +159,7 @@ import { Token, AnyValue } from "./Token";
     "Stmt",
     [
       "Block      : List<Stmt?> statements",
-      "Class      : Token name, List<FunctionStmt> methods",
+      "Class      : Token name, List<FunctionStmt> methods, VariableExpr? superclass",
       "Expression : Expr expression",
       "If         : Expr condition, Stmt thenBranch, Stmt? elseBranch",
       "Function   : Token name, List<Token> params, List<Stmt?> body",
@@ -170,7 +171,7 @@ import { Token, AnyValue } from "./Token";
     (ws) => {
       ws.write(`
 import { Token } from "./Token";
-import { Expr } from "./Expr";
+import { Expr, VariableExpr } from "./Expr";
 `);
     }
   );

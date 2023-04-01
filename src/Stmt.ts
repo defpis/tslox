@@ -1,6 +1,6 @@
 
 import { Token } from "./Token";
-import { Expr } from "./Expr";
+import { Expr, VariableExpr } from "./Expr";
 
 export interface Stmt {
 
@@ -52,11 +52,13 @@ export class ClassStmt implements Stmt {
 
   name: Token;
   methods: Array<FunctionStmt>;
+  superclass?: VariableExpr;
 
-  constructor(name: Token, methods: Array<FunctionStmt>) {
+  constructor(name: Token, methods: Array<FunctionStmt>, superclass?: VariableExpr) {
 
     this.name = name;
     this.methods = methods;
+    this.superclass = superclass;
 
   }
 

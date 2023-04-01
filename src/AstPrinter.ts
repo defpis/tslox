@@ -10,6 +10,7 @@ import {
   LiteralExpr,
   LogicalExpr,
   SetExpr,
+  SuperExpr,
   ThisExpr,
   UnaryExpr,
   VariableExpr,
@@ -17,6 +18,10 @@ import {
 // import { Token, TokenType } from "./Token";
 
 export class AstPrinter implements ExprVisitor<string> {
+  visitSuperExpr(expr: SuperExpr): string {
+    throw new Error("Method not implemented.");
+  }
+
   visitGetExpr(expr: GetExpr): string {
     throw new Error("Method not implemented.");
   }
@@ -75,7 +80,10 @@ export class AstPrinter implements ExprVisitor<string> {
 // >> (* (- 123) (group 45.67))
 
 // const expression = new BinaryExpr(
-//   new UnaryExpr(new Token(TokenType.MINUS, "-", undefined, 1), new LiteralExpr(123)),
+//   new UnaryExpr(
+//     new Token(TokenType.MINUS, "-", undefined, 1),
+//     new LiteralExpr(123)
+//   ),
 //   new Token(TokenType.STAR, "*", undefined, 1),
 //   new GroupingExpr(new LiteralExpr(45.67))
 // );

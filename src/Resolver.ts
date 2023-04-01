@@ -10,6 +10,7 @@ import {
   LiteralExpr,
   LogicalExpr,
   SetExpr,
+  SuperExpr,
   ThisExpr,
   UnaryExpr,
   VariableExpr,
@@ -41,6 +42,7 @@ export enum FunctionType {
 export enum ClassType {
   NONE,
   CLASS,
+  SUBCLASS,
 }
 
 export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
@@ -60,6 +62,19 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
 
   constructor(interpreter: Interpreter) {
     this.interpreter = interpreter;
+  }
+
+  visitSuperExpr(expr: SuperExpr): void {
+    if (this.currentClass === ClassType.NONE) {
+      Lox.error(expr.keyword, "Can't use 'super' outside of a class.");
+    } else if (this.currentClass !== ClassType.SUBCLASS) {
+      Lox.error(
+        expr.keyword,
+        "Can't use 'super' in a class with no superclass."
+      );
+    }
+
+    this.resolveLocal(expr, expr.keyword);
   }
 
   visitThisExpr(expr: ThisExpr): void {
@@ -86,6 +101,20 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
     this.declare(stmt.name);
     this.define(stmt.name);
 
+    if (stmt.superclass && stmt.name.lexeme === stmt.superclass.name.lexeme) {
+      Lox.error(stmt.superclass.name, "A class can't inherit from itself.");
+    }
+
+    if (stmt.superclass) {
+      this.currentClass = ClassType.SUBCLASS;
+      this.resolve(stmt.superclass);
+    }
+
+    if (stmt.superclass) {
+      this.beginScope();
+      this.scope.set("super", true);
+    }
+
     this.beginScope();
     this.scope.set("this", true);
     for (const method of stmt.methods) {
@@ -97,6 +126,10 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
       );
     }
     this.endScope();
+
+    if (stmt.superclass) {
+      this.endScope();
+    }
 
     this.currentClass = enclosingClass;
   }
@@ -240,7 +273,8 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
   }
 
   visitVariableExpr(expr: VariableExpr): void {
-    if (!this.isEmpty() && !this.scope.get(expr.name.lexeme)) {
+    // TODO 为什么递归自身的函数无法在当前scope中找到？
+    if (!this.isEmpty() && this.scope.get(expr.name.lexeme) === false) {
       Lox.error(expr.name, "Can't read local variable in its own initializer.");
     }
 

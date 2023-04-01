@@ -7,11 +7,17 @@ import { AnyValue } from "./Token";
 export class LoxClass extends LoxCallable {
   name: string;
   methods: Map<string, LoxFunction>;
+  superclass?: LoxClass;
 
-  constructor(name: string, methods: Map<string, LoxFunction>) {
+  constructor(
+    name: string,
+    methods: Map<string, LoxFunction>,
+    superclass?: LoxClass
+  ) {
     super();
     this.name = name;
     this.methods = methods;
+    this.superclass = superclass;
   }
 
   arity(): number {
@@ -34,6 +40,10 @@ export class LoxClass extends LoxCallable {
   findMethod(name: string): LoxFunction | void {
     if (this.methods.has(name)) {
       return this.methods.get(name);
+    }
+
+    if (this.superclass) {
+      return this.superclass.findMethod(name);
     }
   }
 
